@@ -1,4 +1,5 @@
-# install.packages("readxl")
+
+noinstall.packages("readxl")
 # Carregar a biblioteca readxl
 library(readxl)
 
@@ -9,6 +10,7 @@ library(readxl)
 caminho_A <- "A.xlsx"
 dados_A <- read_xlsx(caminho_A)
 A <- as.matrix(dados_A)
+
 
 caminho_B <- "B.xlsx"
 dados_B <- read_xlsx(caminho_B)
