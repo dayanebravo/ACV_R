@@ -209,8 +209,6 @@ num_colunas_q <- ncol(Q)
 
 elementos_Sj <- numeric()
 indice_sj <- 1
-elementos_varA <- numeric()
-indice_varA <- 1
 qkl <- numeric()
 indice_qkl <- 1
 lambda_li <- numeric()
@@ -232,11 +230,6 @@ for (i in 1:num_colunas_lamb) {
         
       } 
     }
-    
-    # organizando os dados da variância para futuramente calcular a incerteza
-    elementos_varA[indice_varA] <- varA[i,j]
-    elementos_varA[indice_varA + 1] <- varA[i,j]
-    indice_varA <- indice_varA + 2
   }
 }
 
@@ -276,10 +269,8 @@ cat("############# Sensibilidade de H com relação à B ##################", "\
 
 elementos_Sj <- numeric()
 qki <- numeric()
-elementos_varB <- numeric()
 indice_sj <- 1
 indice_qki <- 1
-indice_varB <- 1
 
 for (i in 1:num_colunas_q) {
   for (j in 1:num_linhas_s) {
@@ -292,29 +283,24 @@ for (i in 1:num_colunas_q) {
       indice_qki <- indice_qki + 1
       
     } 
-    
-    # organizando os dados da variância para futuramente calcular a incerteza
-    elementos_varB[indice_varB] <- varB[i,j]
-    elementos_varB[indice_varB + 1] <- varB[i,j]
-    indice_varB <- indice_varB + 2
   }
 }
 
 hk_bij = qki * elementos_Sj  # fórmula: [q_{ki}*s_j]
+
+# Imprimindo o resultado da sensibilidade de h com relação à B
 cat(hk_bij, "\n")
 qki_sj = hk_bij  # eu troquei o nome, para depois padronizar as últimas contas
 
-################## Sensibilidade de H com relação à B ##########################
-cat("############# Sensibilidade de H com relação à B ##################", "\n")
+################## Sensibilidade de H com relação à Q ##########################
+cat("############# Sensibilidade de H com relação à Q ##################", "\n")
 
 num_linhas_g <- nrow(g)
 
 gj <- numeric()
 elementos_delta <- numeric()
-elementos_varQ <- numeric()
 indice_gj <- 1
 indice_delta <- 1
-indice_varQ <- 1
 
 for (i in 1:num_linhas_q) {
   for (j in 1:num_linhas_g) {
@@ -332,13 +318,13 @@ for (i in 1:num_linhas_q) {
       gj[indice_gj] <- g[j]
       indice_gj <- indice_gj + 1
       
-      elementos_varQ[indice_varQ] <- varQ[k,j]
-      indice_varQ <- indice_varQ + 1
     }
   }
 }
 
 hk_qij <- gj * elementos_delta  # fórmula: [g_j*\delta_{ik}]
+
+# Imprimindo o resultado da sensibilidade de h com relação à Q
 cat(hk_qij, "\n")
 
 ############################### INCERTEZA DE H #################################
@@ -346,13 +332,50 @@ cat('#################### INCERTEZA DE H ###############################', "\n")
 
 # primeira parte da conta
 #fórmula: [\sum_{i,j}(-s_j*\sum_l(q_{kl}*\lam_{li}))^2*var(a_{ij)]
+num_linhas_h <- nrow(h)
+indice_aux <- num_linhas_h - 1
+
+elementos_varA <- numeric()
+indice_varA <- 1
+
+for (i in 1:num_colunas_lamb) {
+  for (j in 1:num_linhas_s) {
+    for (aux in 0:indice_aux) {
+      
+      elementos_varA[indice_varA+aux] <- varA[i,j]
+    }
+    indice_varA <- indice_varA + num_linhas_h
+  }
+}
+
 calc1 <- ((hk_aij)**2) * elementos_varA 
+var_h_aij <- calc1
 
 # segunda parte da conta
 # fórmula: [\sum_{i,j}(q_{ki}*s_j)^2*var(b_{ij)]
+
+num_linhas_h <- nrow(h)
+indice_aux <- num_linhas_h - 1
+
+elementos_varB <- numeric()
+indice_varB <- 1
+
+for (i in 1:num_colunas_q) {
+  for (j in 1:num_linhas_s) {
+    for (aux in 0:indice_aux) {
+      
+      elementos_varB[indice_varB+aux] <- varB[i,j]
+    }
+    indice_varB <- indice_varB + num_linhas_h
+  }
+}
+
 calc2 <- ((qki_sj)**2) * elementos_varB
+var_h_bij <- calc2
 
 # terceira parte da conta
+# fórmula: [\sum_{j}(g_j)^2*var(q_{kj})]
+
 elementos_varQ <- numeric()
 gj <- numeric()
 indice_gj <- 1
@@ -369,10 +392,82 @@ for (j in 1:num_linhas_g) {
   }
 }
 
-# fórmula: [\sum_{j}(g_j)^2*var(q_{kj})]
 calc3 <- (gj**2)*elementos_varQ
+var_h_qij <- calc3
 
-# Inicializar variáveis para a soma de elementos em POSIÇÕES pares e ímpares
+
+cat("######### Incerteza de h em A #############", "\n")
+cat(var_h_aij, "\n")
+cat("######### Incerteza de h em B #############", "\n")
+cat(var_h_bij, "\n")
+cat("######### Incerteza de h em Q #############", "\n")
+cat(var_h_qij, "\n")
+
+######################## GRÁFICO DOS PONTOS CHAVES #############################
+cat('#################### GRÁFICO DOS PONTOS CHAVES ####################', "\n")
+
+# definindo o tamanho do eixo x
+tamanho_hk_aij <- length(hk_aij)
+tamanho_hk_bij <- length(hk_bij)
+tamanho_hk_qij <- length(hk_qij)
+tamanho_eixo_x <- tamanho_hk_aij + tamanho_hk_bij + tamanho_hk_qij
+
+# criando uma matriz nula, com duas colunas, uma para cada eixo, 
+# e numero de linhas = tamanho_eixo_x
+eixos_grafico <- matrix(data = NA, nrow = tamanho_eixo_x, ncol=2)
+n <- 1
+
+# inserindo na matriz os valores da sensilibidade na primeira coluna
+# e os valores da incerteza na segunda coluna
+# para A, B e Q
+for (x in 1:tamanho_hk_aij) {
+  eixos_grafico[n,1] <- hk_aij[x]
+  eixos_grafico[n,2] <- calc1[x]
+  n <- n + 1
+}
+for (x in 1:tamanho_hk_bij) {
+  eixos_grafico[n,1] <- hk_bij[x]
+  eixos_grafico[n,2] <- calc2[x]
+  n <- n + 1
+}
+for (x in 1:tamanho_hk_qij) {
+  eixos_grafico[n,1] <- hk_qij[x]
+  eixos_grafico[n,2] <- calc3[x]
+  n <- n + 1
+}
+
+# dividindo a matriz inicial pela quantidade k do h
+matrizes_resultantes <- list()
+for (z in 1:num_linhas_h) {
+  indices <- seq(z, nrow(eixos_grafico), by = num_linhas_h)
+  matriz_resultante <- eixos_grafico[indices, ]
+  matrizes_resultantes[[z]] <- matriz_resultante
+}
+
+# construindo o gráfico para cada uma das k matrizes de h
+for (z in 1:num_linhas_h) {
+  plot(matrizes_resultantes[[z]][, 1], 
+       matrizes_resultantes[[z]][, 2],
+       main = paste("Sensibilidade x Incerteza - h", z),
+       xlab = "Sensibilidade", ylab = "Incerteza")
+
+  # formatação do gráfico  
+  text(matrizes_resultantes[[z]][, 1], 
+       matrizes_resultantes[[z]][, 2],
+       pos = 2,
+       pch = 16,              # Tipo de símbolo (ponto preto)
+       col = "blue"           # Cor dos pontos
+       )
+}
+
+
+print('fim')
+
+#labels = paste("Ponto", 1:nrow(matrizes_resultantes[[z]])), 
+
+
+
+##### Inicializar variáveis para a soma de elementos em POSIÇÕES pares e ímpares #####
 soma_pares_calc1 <- 0
 soma_impares_calc1 <- 0
 soma_pares_calc2 <- 0
@@ -421,6 +516,9 @@ cat(var_hk1, "\n")
 cat("######### Incerteza de h_2 #############", "\n")
 cat(var_hk2, "\n")
 
+
+
+
 ######################## GRÁFICO DOS PONTOS CHAVES #############################
 cat('#################### GRÁFICO DOS PONTOS CHAVES ####################', "\n")
 
@@ -461,7 +559,7 @@ for (i in 1:length(hk_qij)) {
   }
 }
 
-######### Construindo o eixo x para o gráfico ##################################
+######### Construindo o eixo y para o gráfico ##################################
 h1_eixo_y <- c()
 h2_eixo_y <- c()
 
